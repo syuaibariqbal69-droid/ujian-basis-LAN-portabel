@@ -1,0 +1,21 @@
+Folder ini berisi program pendukung agar aplikasi jalan tanpa instalasi (portabel).
+Semua bagian bersifat opsional: jika tidak ada, aplikasi memakai Python dan MySQL yang sudah terpasang di komputer.
+
+1) Python portabel (opsional, Windows)
+   - Unduh "Windows embeddable package (64-bit)" dari python.org/downloads/windows.
+   - Ekstrak sehingga file ini ada:  runtime\python\python.exe
+
+2) MariaDB atau MySQL portabel (disarankan)
+   - Otomatis: siapkan.bat / siapkan.sh (atau python unduh_mysql.py) mengunduh dan memasangnya ke runtime/mariadb.
+   - Manual:
+   - Unduh versi ZIP (bukan installer) dari mariadb.org/download atau dev.mysql.com/downloads/mysql.
+   - Ekstrak ke dalam folder ini sehingga ada:  runtime\mariadb\bin\mariadbd.exe
+     (atau runtime\mysql\bin\mysqld.exe). Nama folder harus diawali "mariadb" atau "mysql".
+   - Linux/Mac: pakai arsip tar.gz generik dengan susunan yang sama (runtime/mariadb/bin/mariadbd).
+
+3) Library Python (sekali, di komputer yang terhubung internet)
+   - Jalankan siapkan.bat (atau siapkan.sh). Library masuk ke folder libs.
+   - Pakai Python yang sama jenis dan versinya dengan yang dipakai di komputer tujuan.
+
+Setelah itu cukup klik start.bat (Windows) atau jalankan ./start.sh (Linux/Mac).
+Data ujian ada di folder data. Untuk memindahkan atau mencadangkan, tutup aplikasi lalu salin seluruh folder.

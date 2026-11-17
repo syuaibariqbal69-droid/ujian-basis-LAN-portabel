@@ -1,0 +1,74 @@
+{% extends "base.html" %}
+{% block title %}{{ exam.judul }}{% endblock %}
+{% block body %}
+<body>
+<header class="top"><b>{{ exam.judul }}</b><span id="timer" class="timer">--:--</span></header>
+<main class="wrap exam">
+  <section class="panel" id="box"></section>
+  <aside class="panel">
+    <p class="muted">Nomor soal</p>
+    <div id="nav" class="grid"></div>
+    <p id="status" class="muted small"></p>
+    <button class="btn danger" id="finish">Selesai dan kumpulkan</button>
+  </aside>
+</main>
+<script>
+const SOAL = {{ soal|tojson }};
+const JAWAB = {{ jawab|tojson }};
+const TOKEN = {{ csrf()|tojson }};
+const EXAM = {{ eid }};
+const HOME = {{ url_for('ujian')|tojson }};
+let sisa = {{ sisa }}, idx = 0;
+const $ = id => document.getElementById(id);
+
+function esc(s){ const d=document.createElement('div'); d.textContent=s; return d.innerHTML; }
+function render(){
+  const s = SOAL[idx];
+  let h = `<p class="muted">Soal ${idx+1} dari ${SOAL.length}</p><p class="q">${esc(s.pertanyaan).replace(/\n/g,'<br>')}</p>`;
+  for (const k of ['a','b','c','d','e']) {
+    if (!s[k]) continue;  // soal lama bisa hanya punya 4 pilihan
+    h += `<label class="opt ${JAWAB[s.id]===k?'on':''}"><input type="radio" name="o" value="${k}" ${JAWAB[s.id]===k?'checked':''}>
+          <b>${k.toUpperCase()}</b><span>${esc(s[k])}</span></label>`;
+  }
+  h += `<div class="nav2"><button class="btn ghost" ${idx==0?'disabled':''} id="prev">Sebelumnya</button>
+        <button class="btn" ${idx==SOAL.length-1?'disabled':''} id="next">Berikutnya</button></div>`;
+  $('box').innerHTML = h;
+  document.querySelectorAll('input[name=o]').forEach(r => r.onchange = () => simpan(s.id, r.value));
+  $('prev').onclick = () => { idx--; render(); };
+  $('next').onclick = () => { idx++; render(); };
+  nav();
+}
+function nav(){
+  $('nav').innerHTML = SOAL.map((s,i)=>`<button class="n ${JAWAB[s.id]?'done':''} ${i==idx?'cur':''}" data-i="${i}">${i+1}</button>`).join('');
+  $('nav').querySelectorAll('button').forEach(b => b.onclick = () => { idx = +b.dataset.i; render(); });
+  $('status').textContent = Object.keys(JAWAB).length + ' dari ' + SOAL.length + ' soal terjawab';
+}
+async function api(aksi, data){
+  const body = new URLSearchParams({...data, t: TOKEN, exam: EXAM});
+  const r = await fetch('/api/' + aksi, {method:'POST', body});
+  return r.json();
+}
+async function simpan(qid, jwb){
+  JAWAB[qid] = jwb; nav();
+  document.querySelectorAll('.opt').forEach(o => o.classList.toggle('on', o.querySelector('input').checked));
+  try {
+    const r = await api('save', {q:qid, j:jwb});
+    if (r.expired) location.href = HOME;
+  } catch(e) { $('status').textContent = 'Koneksi ke server terputus. Pilih jawaban lagi setelah koneksi kembali.'; }
+}
+async function selesai(){ await api('finish', {}); location.href = HOME; }
+$('finish').onclick = () => {
+  const belum = SOAL.length - Object.keys(JAWAB).length;
+  if (confirm(belum ? `Masih ada ${belum} soal belum dijawab. Kumpulkan sekarang?` : 'Kumpulkan jawaban sekarang?')) selesai();
+};
+setInterval(() => {
+  sisa--;
+  if (sisa <= 0) { $('timer').textContent = '00:00'; selesai(); return; }
+  const m = String(Math.floor(sisa/60)).padStart(2,'0'), s = String(sisa%60).padStart(2,'0');
+  $('timer').textContent = m + ':' + s;
+  $('timer').classList.toggle('low', sisa < 300);
+}, 1000);
+render();
+</script>
+</body>
+{% endblock %}

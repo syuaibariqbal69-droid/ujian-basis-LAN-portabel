@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Daftar ujian{% endblock %}
+{% block body %}
+<body>
+<header class="top"><b>Ujian Online</b><span>{{ session.u.nama }} · <a href="{{ url_for('logout') }}">Keluar</a></span></header>
+<main class="wrap">
+  <h2>Ujian untuk kamu</h2>
+  {% if not rows %}<p class="muted">Belum ada ujian yang dibuka. Tunggu instruksi pengawas.</p>{% endif %}
+  {% for e in rows %}
+  <div class="panel row">
+    <div><h3>{{ e.judul }}</h3><p class="muted">{{ e.jml }} soal · {{ e.durasi_menit }} menit</p></div>
+    <div>
+      {% if e.selesai %}<span class="badge ok">Selesai · Nilai {{ e.skor }}</span>
+      {% elif e.aktif and e.jml > 0 %}<a class="btn" href="{{ url_for('soal', eid=e.id) }}">{{ 'Lanjutkan ujian' if e.aid else 'Mulai ujian' }}</a>
+      {% else %}<span class="badge">Ditutup</span>{% endif %}
+    </div>
+  </div>
+  {% endfor %}
+</main></body>
+{% endblock %}

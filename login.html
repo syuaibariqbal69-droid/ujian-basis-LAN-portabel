@@ -1,0 +1,15 @@
+{% extends "base.html" %}
+{% block title %}Masuk · Ujian Online{% endblock %}
+{% block body %}
+<body class="center">
+<form method="post" class="panel login">
+  <h1>Ujian Online</h1>
+  <p class="muted">Masuk dengan akun yang diberikan pengawas.</p>
+  {% if err %}<p class="err">{{ err }}</p>{% endif %}
+  <input type="hidden" name="t" value="{{ csrf() }}">
+  <label>Username<input name="username" autocomplete="username" required autofocus></label>
+  <label>Password<input type="password" name="password" autocomplete="current-password" required></label>
+  <button class="btn">Masuk</button>
+</form>
+</body>
+{% endblock %}

@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+{% block title %}Panel pengawas{% endblock %}
+{% block head %}{% if p == 'dash' %}<meta http-equiv="refresh" content="15">{% endif %}{% endblock %}
+{% macro post(a, id=None, label='', cls='btn', ask='') %}
+<form method="post" action="{{ url_for('admin_act') }}" {% if ask %}onsubmit="return confirm('{{ ask }}')"{% endif %}>
+  <input type="hidden" name="t" value="{{ csrf() }}"><input type="hidden" name="a" value="{{ a }}">
+  {% if id %}<input type="hidden" name="id" value="{{ id }}">{% endif %}
+  <button class="{{ cls }}">{{ label }}</button>
+</form>
+{% endmacro %}
+{% block body %}
+<body>
+<header class="top"><b>Panel pengawas</b><span>{{ session.u.nama }} · <a href="{{ url_for('logout') }}">Keluar</a></span></header>
+<nav class="tabs">
+  <a href="{{ url_for('admin_dash') }}" class="{{ 'on' if p=='dash' }}">Dashboard</a>
+  <a href="{{ url_for('admin_ujian') }}" class="{{ 'on' if p in ('ujian','soal') }}">Ujian</a>
+  <a href="{{ url_for('admin_siswa') }}" class="{{ 'on' if p=='siswa' }}">Siswa</a>
+  <a href="{{ url_for('admin_hasil') }}" class="{{ 'on' if p=='hasil' }}">Hasil</a>
+</nav>
+<main class="wrap">
+{% for m in get_flashed_messages() %}<p class="flash">{{ m }}</p>{% endfor %}
+
+{% if p == 'dash' %}
+  <div class="stats">
+    <div class="panel stat"><b>{{ st.siswa }}</b><span>Siswa terdaftar</span></div>
+    <div class="panel stat"><b>{{ st.aktif }}</b><span>Ujian dibuka</span></div>
+    <div class="panel stat"><b>{{ st.jalan }}</b><span>Sedang mengerjakan</span></div>
+    <div class="panel stat"><b>{{ st.selesai }}</b><span>Sudah selesai</span></div>
+  </div>
+  <h2>Sedang mengerjakan <small class="muted">(diperbarui tiap 15 detik)</small></h2>
+  <div class="panel scroll"><table>
+    <tr><th>Nama</th><th>Kelas</th><th>Ujian</th><th>Progres</th><th>Sisa waktu</th></tr>
+    {% for l in live %}
+    <tr><td>{{ l.nama }}</td><td>{{ l.kelas }}</td><td>{{ l.judul }}</td>
+      <td><div class="bar"><i style="width:{{ l.pct }}%"></i></div><small>{{ l.terjawab }}/{{ l.total }}</small></td>
+      <td>{{ l.sisa_txt }}</td></tr>
+    {% else %}<tr><td colspan="5" class="muted">Belum ada siswa yang mengerjakan.</td></tr>{% endfor %}
+  </table></div>
+  <form method="post" action="{{ url_for('admin_act') }}" class="panel form inline">
+    <input type="hidden" name="t" value="{{ csrf() }}"><input type="hidden" name="a" value="password">
+    <label>Ganti password admin<input type="password" name="baru" minlength="6" placeholder="Password baru (min. 6 karakter)"></label>
+    <button class="btn ghost">Simpan password</button>
+  </form>
+
+{% elif p == 'ujian' %}
+  <form method="post" action="{{ url_for('admin_act') }}" class="panel form">
+    <h3>Buat ujian baru</h3>
+    <input type="hidden" name="t" value="{{ csrf() }}"><input type="hidden" name="a" value="exam">
+    <label>Judul<input name="judul" required></label>
+    <label>Durasi (menit)<input type="number" name="durasi" value="60" min="1" required></label>
+    <label class="chk"><input type="checkbox" name="acak"> Acak urutan soal tiap siswa</label>
+    <button class="btn">Buat ujian</button>
+  </form>
+  {% for e in rows %}
+  <div class="panel row">
+    <div><h3>{{ e.judul }} <small class="muted">#{{ e.id }}</small></h3><p class="muted">{{ e.jml }} soal · {{ e.durasi_menit }} menit · {{ 'Dibuka' if e.aktif else 'Ditutup' }}</p></div>
+    <div class="acts">
+      <a class="btn ghost" href="{{ url_for('admin_soal', eid=e.id) }}">Kelola soal</a>
+      {{ post('toggle', e.id, 'Tutup ujian' if e.aktif else 'Buka ujian') }}
+      {{ post('delexam', e.id, 'Hapus', 'btn danger', 'Hapus ujian beserta soal dan hasilnya?') }}
+    </div>
+  </div>
+  {% endfor %}
+
+{% elif p == 'soal' %}
+  <h2>{{ exam.judul }}</h2>
+  <form method="post" action="{{ url_for('admin_act') }}" class="panel form">
+    <h3>Tambah soal</h3>
+    <input type="hidden" name="t" value="{{ csrf() }}"><input type="hidden" name="a" value="soal"><input type="hidden" name="exam" value="{{ exam.id }}">
+    <label>Pertanyaan<textarea name="pertanyaan" rows="3" required></textarea></label>
+    <label>Pilihan A<input name="a" required></label><label>Pilihan B<input name="b" required></label>
+    <label>Pilihan C<input name="c" required></label><label>Pilihan D<input name="d" required></label>
+    <label>Pilihan E<input name="e" required></label>
+    <label>Kunci jawaban<select name="kunci"><option>a</option><option>b</option><option>c</option><option>d</option><option>e</option></select></label>
+    <button class="btn">Simpan soal</button>
+    <p class="muted small">Untuk banyak soal sekaligus, pakai tools/import_soal.py.</p>
+  </form>
+  {% for q in rows %}
+  <div class="panel row"><div><p><b>{{ loop.index }}.</b> {{ q.pertanyaan }}</p>
+    <p class="muted small">A. {{ q.a }} · B. {{ q.b }} · C. {{ q.c }} · D. {{ q.d }}{% if q.e %} · E. {{ q.e }}{% endif %} · Kunci: <b>{{ q.kunci|upper }}</b></p></div>
+    {{ post('delsoal', q.id, 'Hapus', 'btn danger', 'Hapus soal ini?') }}</div>
+  {% endfor %}
+
+{% elif p == 'siswa' %}
+  <form method="post" action="{{ url_for('admin_act') }}" class="panel form">
+    <h3>Tambah atau perbarui siswa</h3>
+    <input type="hidden" name="t" value="{{ csrf() }}"><input type="hidden" name="a" value="siswa">
+    <label>Satu siswa per baris: username,nama,kelas,password
+      <textarea name="data" rows="5" placeholder="budi01,Budi Santoso,XII IPA 1,rahasia123" required></textarea></label>
+    <button class="btn">Simpan akun</button>
+  </form>
+  <div class="panel scroll"><table><tr><th>Username</th><th>Nama</th><th>Kelas</th><th></th></tr>
+  {% for u in rows %}<tr><td>{{ u.username }}</td><td>{{ u.nama }}</td><td>{{ u.kelas }}</td>
+    <td>{{ post('delsiswa', u.id, 'Hapus', 'btn danger sm', 'Hapus akun ini?') }}</td></tr>
+  {% else %}<tr><td colspan="4" class="muted">Belum ada siswa.</td></tr>{% endfor %}</table></div>
+
+{% elif p == 'hasil' %}
+  <form method="get" class="panel form inline">
+    <label>Ujian<select name="e" onchange="this.form.submit()">
+      {% for e in exams %}<option value="{{ e.id }}" {{ 'selected' if e.id == eid }}>{{ e.judul }}</option>{% endfor %}</select></label>
+    {% if eid %}<a class="btn ghost" href="{{ url_for('admin_csv', eid=eid) }}">Unduh CSV (Excel)</a>{% endif %}
+  </form>
+  <div class="panel scroll"><table><tr><th>Nama</th><th>Kelas</th><th>Mulai</th><th>Status</th><th>Benar</th><th>Nilai</th><th></th></tr>
+  {% for r in rows %}<tr><td>{{ r.nama }}</td><td>{{ r.kelas }}</td><td>{{ r.mulai }}</td>
+    <td>{{ 'Selesai' if r.selesai else 'Mengerjakan' }}</td><td>{{ r.benar if r.benar is not none }}</td><td><b>{{ r.skor if r.skor is not none }}</b></td>
+    <td>{{ post('reset', r.id, 'Reset', 'btn ghost sm', 'Reset percobaan ini? Jawaban siswa akan dihapus.') }}</td></tr>
+  {% else %}<tr><td colspan="7" class="muted">Belum ada hasil.</td></tr>{% endfor %}</table></div>
+{% endif %}
+</main></body>
+{% endblock %}
